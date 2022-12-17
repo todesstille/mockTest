@@ -6,7 +6,7 @@
   "author": "Dmitry Redkin <tanatonaut@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@todesstille/mock": "=1.1.9",
+    "@todesstille/mock": "=1.1.22",
     "hardhat": "^2.12.4"
   },
   "devDependencies": {

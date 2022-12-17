@@ -1,3 +1,4 @@
+const {time} = require("@nomicfoundation/hardhat-network-helpers");
 const { expect } = require("chai");
 const {ethers} = require('hardhat')
 const {Mock} = require('@todesstille/mock')
@@ -121,4 +122,23 @@ describe("Uniswap tests", function () {
       expect(reserves[1]).to.eq(token1Amount)
     })
   })
+
+  describe("Uniswap Router", function () {
+    it ('Integrity test', async () => {
+      [router, factory, weth] = await mock.getUniswapV2(admin.address);
+      const amount1 = ethers.utils.parseUnits("1.0", 18)
+      const amount2 = ethers.utils.parseUnits("4.0", 18)
+      const expectedLiquidity = ethers.utils.parseUnits("2.0", 18);
+      //console.log(await factory.getPair(token1.address, token2.address))
+      await token1.mint(admin.address, amount1)
+      await token2.mint(admin.address, amount2)
+      await token1.approve(router.address, amount1)
+      await token2.approve(router.address, amount2)
+      t = await time.latest();
+      t += 100
+      pair = await mock.getUniswapV2Pair(factory, token1.address, token2.address);
+      await router.addLiquidity(token1.address, token2.address, amount1, amount2, 0, 0, admin.address, t)
+      expect(await pair.balanceOf(admin.address)).to.eq(expectedLiquidity.sub(MINIMUM_LIQUIDITY))
+    })
+  });
 });
