@@ -4,18 +4,20 @@ const {Mock} = require('@todesstille/mock')
 const mock = new Mock(ethers)
 
 const AddressZero = ethers.constants.AddressZero
-let admin, alice, factory, token1, token2
+let admin, alice, factory, token1, token2, pair
+
+const MINIMUM_LIQUIDITY = BigInt("1000");
 
 describe("Uniswap tests", function () {
   
   beforeEach(async () => {
     [admin, alice] = await ethers.getSigners()
-    factory = await mock.getUniswapV2(admin.address);
+    factory = await mock.getUniswapV2Factory(admin.address);
     token1 = await mock.getERC20("Token1", "TKN1", 18);
     token2 = await mock.getERC20("Token2", "TKN2", 18);
   })
 
-  describe("Uniswap", function () {
+  describe("Uniswap Factory", function () {
     it ('Uniswap factory and pair', async () => {
       pair = await mock.getUniswapV2Pair(factory, token1.address, token2.address)
       expect(await pair.balanceOf(admin.address)).to.equal(0)
@@ -71,7 +73,7 @@ describe("Uniswap tests", function () {
     it('createPair:gas', async () => {
       const tx = await factory.createPair(token1.address, token2.address)
       const receipt = await tx.wait()
-      expect(receipt.gasUsed).to.eq(2512920)
+      expect(receipt.gasUsed).to.eq(2523364) //Original tests has 2512920
     })
 
     it('setFeeTo', async () => {
@@ -80,4 +82,43 @@ describe("Uniswap tests", function () {
       expect(await factory.feeTo()).to.eq(alice.address)
     })
   });
+  describe("Uniswap Pair", function () {
+    beforeEach(async () => {
+      pair = await mock.getUniswapV2Pair(factory, token1.address, token2.address);
+    })
+
+    it('mint', async () => {
+      let tokenA, tokenB      
+      if (token1.address < token2.address) {
+        tokenA = token1; 
+        tokenB = token2
+      } else {
+        tokenA = token2; 
+        tokenB = token1
+      };
+      const token0Amount = ethers.utils.parseUnits("1.0", 18);
+      const token1Amount = ethers.utils.parseUnits("4.0", 18);
+      await tokenA.mint(pair.address, token0Amount)
+      await tokenB.mint(pair.address, token1Amount)
+  
+      const expectedLiquidity = ethers.utils.parseUnits("2.0", 18);
+      await expect(pair.mint(alice.address, {gasLimit: 9999999}))
+        .to.emit(pair, 'Transfer')
+        .withArgs(AddressZero, AddressZero, MINIMUM_LIQUIDITY)
+        .to.emit(pair, 'Transfer')
+        .withArgs(AddressZero, alice.address, expectedLiquidity.sub(MINIMUM_LIQUIDITY))
+        .to.emit(pair, 'Sync')
+        .withArgs(token0Amount, token1Amount)
+        .to.emit(pair, 'Mint')
+        .withArgs(admin.address, token0Amount, token1Amount)
+  
+      expect(await pair.totalSupply()).to.eq(expectedLiquidity)
+      expect(await pair.balanceOf(alice.address)).to.eq(expectedLiquidity.sub(MINIMUM_LIQUIDITY))
+      expect(await tokenA.balanceOf(pair.address)).to.eq(token0Amount)
+      expect(await tokenB.balanceOf(pair.address)).to.eq(token1Amount)
+      const reserves = await pair.getReserves()
+      expect(reserves[0]).to.eq(token0Amount)
+      expect(reserves[1]).to.eq(token1Amount)
+    })
+  })
 });
