@@ -43,7 +43,7 @@ describe("Uniswap tests", function () {
 
     it('create pair', async () => {
       pairAddress = await factory.callStatic.createPair(token1.address, token2.address)
-      if (token1.address < token2.address) {
+      if (token1.address.toLowerCase() < token2.address.toLowerCase()) {
         tokenA = token1.address; 
         tokenB = token2.address
       } else {
@@ -65,7 +65,7 @@ describe("Uniswap tests", function () {
     
     it ("pair data correct", async () => {
       pair = await mock.getUniswapV2Pair(factory, token1.address, token2.address);
-      if (token1.address < token2.address) {
+      if (token1.address.toLowerCase() < token2.address.toLowerCase()) {
         tokenA = token1.address; 
         tokenB = token2.address
       } else {
@@ -90,7 +90,7 @@ describe("Uniswap tests", function () {
 
     it('mint', async () => {
       let tokenA, tokenB      
-      if (token1.address < token2.address) {
+      if (token1.address.toLowerCase < token2.address.toLowerCase()) {
         tokenA = token1; 
         tokenB = token2
       } else {
@@ -113,6 +113,7 @@ describe("Uniswap tests", function () {
         .to.emit(pair, 'Mint')
         .withArgs(admin.address, token0Amount, token1Amount)
   
+      //await pair.mint(alice.address, {gasLimit: 9999999})
       expect(await pair.totalSupply()).to.eq(expectedLiquidity)
       expect(await pair.balanceOf(alice.address)).to.eq(expectedLiquidity.sub(MINIMUM_LIQUIDITY))
       expect(await tokenA.balanceOf(pair.address)).to.eq(token0Amount)
