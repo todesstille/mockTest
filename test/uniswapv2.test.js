@@ -77,12 +77,6 @@ describe("Uniswap tests", function () {
       expect(await pair.token1()).to.eq(tokenB)
     })
     
-    it('createPair:gas', async () => {
-      const tx = await factory.createPair(token1.address, token2.address)
-      const receipt = await tx.wait()
-      expect(receipt.gasUsed).to.eq(2523364) //Original tests has 2512920
-    })
-
     it('setFeeTo', async () => {
       await expect(factory.connect(alice).setFeeTo(alice.address)).to.be.revertedWith('UniswapV2: FORBIDDEN')
       await factory.setFeeTo(alice.address)
