@@ -5,7 +5,7 @@ const {Mock} = require('@todesstille/mock')
 const mock = new Mock(ethers)
 
 const AddressZero = ethers.constants.AddressZero
-let admin, alice, factory, token1, token2, pair
+let admin, alice, factory, token1, token2, pair, uniswap, weth
 let amount1, amount2
 
 const MINIMUM_LIQUIDITY = BigInt("1000");
@@ -19,14 +19,17 @@ describe("Uniswap tests", function () {
   
   beforeEach(async () => {
     [admin, alice] = await ethers.getSigners()
-    factory = await mock.getUniswapV2Factory(admin.address);
+    weth = await mock.getWeth9()
+    uniswap = await mock.createUniswapV2(weth.address, admin.address)
+    //factory = await mock.getUniswapV2Factory(admin.address);
+    factory = uniswap.factory;
     token1 = await mock.getERC20("Token1", "TKN1", 18);
     token2 = await mock.getERC20("Token2", "TKN2", 18);
   })
 
   describe("Uniswap Factory", function () {
     it ('Uniswap factory and pair', async () => {
-      pair = await mock.getUniswapV2Pair(factory, token1.address, token2.address)
+      pair = await uniswap.createOrGetPair(token1.address, token2.address)
       expect(await pair.balanceOf(admin.address)).to.equal(0)
       await token1.mint(pair.address, ethers.utils.parseUnits("100.0", 18))
       await token2.mint(pair.address, ethers.utils.parseUnits("1000.0", 18))
@@ -64,7 +67,7 @@ describe("Uniswap tests", function () {
     })
     
     it ("pair data correct", async () => {
-      pair = await mock.getUniswapV2Pair(factory, token1.address, token2.address);
+      pair = await uniswap.createOrGetPair(token1.address, token2.address);
       if (token1.address.toLowerCase() < token2.address.toLowerCase()) {
         tokenA = token1.address; 
         tokenB = token2.address
@@ -85,12 +88,12 @@ describe("Uniswap tests", function () {
   });
   describe("Uniswap Pair", function () {
     beforeEach(async () => {
-      pair = await mock.getUniswapV2Pair(factory, token1.address, token2.address);
+      pair = await uniswap.createOrGetPair(token1.address, token2.address);
     })
 
     it('mint', async () => {
       let tokenA, tokenB      
-      if (token1.address.toLowerCase < token2.address.toLowerCase()) {
+      if (token1.address.toLowerCase() < token2.address.toLowerCase()) {
         tokenA = token1; 
         tokenB = token2
       } else {
@@ -127,7 +130,7 @@ describe("Uniswap tests", function () {
   describe("Uniswap Router Integrity", function () {
     
     beforeEach(async () => {
-      [router, factory, weth] = await mock.getUniswapV2(admin.address);
+      router = uniswap.router
       amount1 = ethers.utils.parseUnits("1.0", 18)
       amount2 = ethers.utils.parseUnits("4.0", 18)
       await token1.mint(admin.address, amount1)
@@ -135,7 +138,7 @@ describe("Uniswap tests", function () {
       await token1.approve(router.address, amount1)
       await token2.approve(router.address, amount2)
       await router.addLiquidity(token1.address, token2.address, amount1, amount2, 0, 0, admin.address, await futureTimestamp())
-      pair = await mock.getUniswapV2Pair(factory, token1.address, token2.address);
+      pair = await uniswap.createOrGetPair(token1.address, token2.address);
     })
     it ('Could add liquidity', async () => {
       const expectedLiquidity = ethers.utils.parseUnits("2.0", 18).sub(MINIMUM_LIQUIDITY);
